@@ -1,6 +1,7 @@
 langgraph
 langchain
 langchain-community
+langchain-ollama
 pydantic
 pytest
 langfuse
@@ -12,5 +13,3 @@ python-dotenv
 chainlit
 faiss-cpu
 outlines
-ChatOllama
-psycopg

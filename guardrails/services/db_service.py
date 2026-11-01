@@ -13,7 +13,7 @@ load_dotenv()
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://guardrails:guardrails_dev@localhost:5432/guardrails_db",
+    "postgresql+psycopg2://guardrails:guardrails_dev@localhost:5432/guardrails_db",
 )
 
 engine = create_engine(DATABASE_URL, echo=False, future=True)
