@@ -1,0 +1,14 @@
+langgraph
+langchain
+langchain-community
+pydantic
+pytest
+langfuse
+psycopg2-binary
+pgvector
+sqlalchemy
+deepeval
+python-dotenv
+chainlit
+faiss-cpu
+outlines

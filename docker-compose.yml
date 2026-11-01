@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+
+  # ── LLM runtime ────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+
+  # ── Data store: PostgreSQL + pgvector ─────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: guardrails-postgres
+    environment:
+      POSTGRES_USER: guardrails
+      POSTGRES_PASSWORD: guardrails_dev
+      POSTGRES_DB: guardrails_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U guardrails -d guardrails_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Observability: Langfuse (self-hosted) ─────────────────────
+  langfuse-db:
+    image: postgres:16
+    container_name: langfuse-db
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse_dev
+      POSTGRES_DB: langfuse_db
+    volumes:
+      - langfuse_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: langfuse
+    depends_on:
+      - langfuse-db
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse:langfuse_dev@langfuse-db:5432/langfuse_db
+      NEXTAUTH_SECRET: change_me_dev_secret
+      SALT: change_me_dev_salt
+      NEXTAUTH_URL: http://localhost:3000
+      TELEMETRY_ENABLED: "false"
+    restart: unless-stopped
+
+volumes:
+  ollama:
+  postgres_data:
+  langfuse_db_data:
