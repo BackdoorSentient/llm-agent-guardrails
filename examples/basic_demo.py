@@ -13,11 +13,15 @@ import os
 import re
 import sys
 
-from langchain_community.chat_models import ChatOllama
+# from langchain_community.chat_models import ChatOllama
+from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
 
 from guardrails.schemas import SearchToolCall
+
+from dotenv import load_dotenv
+load_dotenv()
 
 DEFAULT_QUERY = "best local-first LLM agent frameworks"
 SYSTEM_PROMPT = """You emit a single JSON object for a search tool call.
