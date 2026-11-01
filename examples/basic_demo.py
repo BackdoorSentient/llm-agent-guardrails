@@ -10,18 +10,20 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 
-# from langchain_community.chat_models import ChatOllama
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
-
-from guardrails.schemas import SearchToolCall
-
 from dotenv import load_dotenv
+
+from guardrails.core.schemas import SearchToolCall
+from guardrails.utils.json_utils import extract_json
+from guardrails.utils.logging_config import setup_logging
+from guardrails.services.db_service import log_decision
+
 load_dotenv()
+setup_logging()
 
 DEFAULT_QUERY = "best local-first LLM agent frameworks"
 SYSTEM_PROMPT = """You emit a single JSON object for a search tool call.
@@ -30,19 +32,6 @@ No markdown, no commentary, no extra keys.
 Required shape:
 {"query": "<search string>", "max_results": <positive integer>}
 """
-
-
-def extract_json(raw: str) -> dict:
-    """Parse JSON from model output, including fenced ```json blocks."""
-    text = raw.strip()
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
-    if fenced:
-        text = fenced.group(1)
-    else:
-        start, end = text.find("{"), text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            text = text[start : end + 1]
-    return json.loads(text)
 
 
 def main() -> int:
@@ -73,6 +62,10 @@ def main() -> int:
         print("VALIDATION: FAILED (could not reach the model)")
         print(f"Error: {exc}")
         print("Is Ollama running? Try: ollama serve   and   ollama pull llama3")
+        log_decision(
+            user_query=user_query, layer="schema", decision="blocked",
+            reason=f"model unreachable: {exc}", model_used=model,
+        )
         return 1
 
     raw = response.content if isinstance(response.content, str) else str(response.content)
@@ -85,6 +78,10 @@ def main() -> int:
     except json.JSONDecodeError as exc:
         print("VALIDATION: FAILED (output is not valid JSON)")
         print(f"Parse error: {exc}")
+        log_decision(
+            user_query=user_query, layer="schema", decision="blocked",
+            raw_model_output=raw, reason=f"invalid JSON: {exc}", model_used=model,
+        )
         return 1
 
     print("Parsed JSON:")
@@ -96,10 +93,19 @@ def main() -> int:
     except ValidationError as exc:
         print("VALIDATION: FAILED (does not match SearchToolCall)")
         print(exc)
+        log_decision(
+            user_query=user_query, layer="schema", decision="blocked",
+            raw_model_output=raw, parsed_payload=payload,
+            reason=str(exc), model_used=model,
+        )
         return 1
 
     print("VALIDATION: PASSED")
     print(f"SearchToolCall(query={tool_call.query!r}, max_results={tool_call.max_results})")
+    log_decision(
+        user_query=user_query, layer="schema", decision="passed",
+        raw_model_output=raw, parsed_payload=payload, model_used=model,
+    )
     return 0
 
 

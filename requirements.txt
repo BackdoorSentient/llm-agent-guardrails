@@ -13,3 +13,4 @@ chainlit
 faiss-cpu
 outlines
 ChatOllama
+psycopg
