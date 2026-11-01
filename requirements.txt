@@ -12,3 +12,4 @@ python-dotenv
 chainlit
 faiss-cpu
 outlines
+ChatOllama
